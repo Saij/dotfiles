@@ -12,14 +12,26 @@ error_symbol = ''
 # ---
 
 [os]
-format = '[$symbol](bold white) '   
+format = '[$symbol](bold cyan) '
 disabled = false
 
 [os.symbols]
-Windows = ' '
+Windows = ''
 Arch = '󰣇'
 Ubuntu = ''
 Macos = '󰀵'
+Linux = ''
+Debian = ''
+Raspbian = ''
+Fedora = ''
+Gentoo = ''
+CentOS = ''
+openSUSE = ''
+Mint = ''
+Alpine = ''
+NixOS = ''
+Manjaro = ''
+RedHatEnterprise = ''
 
 # ---y
 
@@ -34,7 +46,7 @@ show_always = true
 # Shows the hostname
 [hostname]
 ssh_only = false
-format = 'on [$hostname](bold yellow) '
+format = 'on [$hostname](bold red) '
 disabled = false
 
 # Shows current directory
