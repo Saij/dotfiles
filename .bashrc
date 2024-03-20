@@ -28,5 +28,5 @@ fi
 
 # Load Starship
 if [[ ! -z $(which starship) ]]; then
-    eval "$(starship init zsh)"
+    eval "$(starship init bash)"
 fi
