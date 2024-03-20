@@ -70,7 +70,7 @@ function install_file() {
     local FILE=$1
     if [[ ${USE_GIT} = "y" ]]; then
         # Create simple symlink
-        rm "${HOME_DIR}/${FILE}"
+        [[ -f "${HOME_DIR}/${FILE}" ]] && rm "${HOME_DIR}/${FILE}"
         ln -s "${INSTALL_DIR}/${FILE}" "${HOME_DIR}/${FILE}"
     else
         cp "${INSTALL_DIR}/dotfiles-main/${FILE}" "${HOME_DIR}/${FILE}"
