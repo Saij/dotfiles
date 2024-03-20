@@ -5,6 +5,7 @@ OBJECTS=(
     ["zsh"]="n" 
     ["starship"]="n" 
     ["git"]="n"
+    ["bash"]="n"
 )
 
 function install_git() {
@@ -23,9 +24,16 @@ function install_git() {
 function install_zsh() {
     log "ZSH" "Installing ZSH profile"
 
+    local ZSH=$(which zsh)
+
+    if [[ -z "${ZSH}" ]]; then
+        warning "ZSH" "zSH is not installed - doing nothing"
+        return
+    fi
+
     create_directory ".zsh"
-    install_file ".zsh/aliases.zsh"
     install_file ".zsh/wsl2fix.zsh"
+    install_file ".aliases"
     install_file ".zshenv"
     install_file ".zshrc"
 }
@@ -42,6 +50,13 @@ function install_starship() {
 
     create_directory ".config"
     install_file ".config/starship.toml"
+}
+
+function install_bash() {
+    log "BASH" "Installing bash profile"
+
+    install_file ".aliases"
+    install_file ".bashrc"
 }
 
 function create_directory() {
@@ -204,6 +219,7 @@ fi
 [[ ${OBJECTS["git"]} = "y" ]] && install_git
 [[ ${OBJECTS["zsh"]} = "y" ]] && install_zsh
 [[ ${OBJECTS["starship"]} = "y" ]] && install_starship
+[[ ${OBJECTS["bash"]} = "y" ]] && install_bash
 
 if [[ ${USE_GIT} = "n" ]]; then
     rm -rf "${INSTALL_DIR}"
