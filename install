@@ -1,0 +1,210 @@
+#!env bash
+
+declare -A OBJECTS
+OBJECTS=(
+    ["zsh"]="n" 
+    ["starship"]="n" 
+    ["git"]="n"
+)
+
+function install_git() {
+    log "GIT" "Installing GIT profile"
+
+    local GIT=$(which git)
+
+    if [[ -z "${GIT}" ]]; then
+        warning "GIT" "GIT is not installed - doing nothing"
+        return
+    fi
+
+    install_file ".gitconfig"
+}
+
+function install_zsh() {
+    log "ZSH" "Installing ZSH profile"
+
+    create_directory ".zsh"
+    install_file ".zsh/aliases.zsh"
+    install_file ".zsh/wsl2fix.zsh"
+    install_file ".zshenv"
+    install_file ".zshrc"
+}
+
+function install_starship() {
+    log "STARSHIP" "Installing Starship profile"
+
+    local STARSHIP=$(which starship)
+
+    if [[ -z "${STARSHIP}" ]]; then
+        warning "STARSHIP" "starship is not installed - doing nothing"
+        return
+    fi
+
+    create_directory ".config"
+    install_file ".config/starship.toml"
+}
+
+function create_directory() {
+    local DIR=$1
+
+    mkdir -p "${HOME_DIR}/${DIR}"
+    chown ${USER_ID}:${GROUP_ID} "${HOME_DIR}/${DIR}"
+}
+
+function install_file() {
+    local FILE=$1
+    if [[ ${USE_GIT} = "y" ]]; then
+        # Create simple symlink
+        ln -s "${INSTALL_DIR}/${FILE}" "${HOME_DIR}/${FILE}"
+    else
+        cp "${INSTALL_DIR}/dotfiles-main/${FILE}" "${HOME_DIR}/${FILE}"
+    fi
+
+    chown ${USER_ID}:${GROUP_ID} "${HOME_DIR}/${FILE}"
+}
+
+function clone_git() {
+    local GIT=$(which git)
+
+    if [[ -z "${GIT}" ]]; then
+        error "GIT is required!"
+    fi
+
+    if [[ $INSTALL_DIR_PROVIDED = "n" ]]; then
+        error "Please provide a valid installation directory for use with GIT!"
+    fi
+
+    log "SYSTEM" "Cloning repository..."
+
+    mkdir -p "${INSTALL_DIR}"
+    git clone --quiet "${GIT_REPO}" "${INSTALL_DIR}"
+
+    log "SYSTEM" "Done cloning."
+}
+
+function download() {
+    local CURL=$(which curl)
+    local UNZIP=$(which unzip)
+
+    if [[ -z "${CURL}" ]]; then
+        error "cURL is required!"
+    fi
+
+    if [[ -z "${UNZIP}" ]]; then
+        error "Unzip is required!"
+    fi
+
+    log "SYSTEM" "Downloading archive..."
+
+    curl -sSL "${GIT_ARCHIVE}" -o "${INSTALL_DIR}/dotfiles.zip" >/dev/null
+    unzip "${INSTALL_DIR}/dotfiles.zip" -d "${INSTALL_DIR}" >/dev/null
+    rm "${INSTALL_DIR}/dotfiles.zip" >/dev/null
+
+    log "SYSTEM" "Done downloading."
+}
+
+function error() {
+    local ERROR=$1
+    echo -e "\e[41m\e[30m  !!!  \e[0m     ERROR     \e[41m\e[30m  !!!  \e[0m"
+    echo $ERROR
+    exit 1
+}
+
+function warning() {
+    local OBJECT=$1
+    local WARNING=$2
+    echo -e "\e[43m\e[30m ${OBJECT} \e[0m ${WARNING}"
+}
+
+function log() {
+    local OBJECT=$1
+    local MESSAGE=$2
+    echo -e "\e[42m\e[30m ${OBJECT} \e[0m ${MESSAGE}"
+}
+
+function help() {
+    echo "Usage: $0 [-G -d <path>] [-u <id>] [-g <id>] [-H <path>] -h -o <object_1> [-o <object_2> -o <object_n>]"
+    echo "  -o <object>      Object to install (currently supported: ${!OBJECTS[@]}"
+    echo "  -G               Install as GIT repository"
+    echo "  -d <directory>   Directory to install to when installing as GIT repository"
+    echo "  -u               Change owner user"
+    echo "  -g               Change owner group"
+    echo "  -H               Home directory to install to"
+    echo "  -h               Show this help page"
+    exit 1
+}
+
+GIT_ARCHIVE="https://github.com/Saij/dotfiles/archive/refs/heads/main.zip"
+GIT_REPO="https://github.com/Saij/dotfiles.git"
+
+USE_GIT="n"
+
+INSTALL_DIR=$(mktemp -d)
+INSTALL_DIR_PROVIDED="n"
+
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+HOME_DIR="${HOME}"
+
+# Load options
+while getopts "o:Gd:u:g:H:h" opt; do
+    case $opt in
+        G)
+            USE_GIT="y"
+            ;;
+        d)
+            INSTALL_DIR="${OPTARG}"
+            INSTALL_DIR_PROVIDED="y"
+            ;;
+        o)
+            if [[ -z ${OBJECTS[${OPTARG}]+x} ]]; then
+                echo "Object ${OPTARG} is not supported!"
+                help
+            else
+                OBJECTS[${OPTARG}]="y"
+            fi
+            ;;
+        u)
+            USER_ID="${OPTARG}"
+            ;;
+        g)
+            GROUP_ID="${OPTARG}"
+            ;;
+        H)
+            HOME_DIR="${OPTARG}"
+            if [[ ! -d "${HOME_DIR}" ]]; then
+                echo "Home directory ${HOME_DIR} does not exist!"
+                help
+            fi
+            ;;
+        h)
+            help
+            ;;
+        :) 
+            echo "Option -${OPTARG} requires an argument."
+            help
+            ;;
+        ?)
+            echo "Invalid option: -${OPTARG}."
+            help
+            ;;
+    esac
+done
+
+shift "$(( OPTIND - 1 ))"
+
+echo -e "\e[41m\e[30m    DotFiles Installation    \e[0m"
+
+if [[ ${USE_GIT} = "y" ]]; then
+    clone_git
+else
+    download
+fi
+
+[[ ${OBJECTS["git"]} = "y" ]] && install_git
+[[ ${OBJECTS["zsh"]} = "y" ]] && install_zsh
+[[ ${OBJECTS["starship"]} = "y" ]] && install_starship
+
+if [[ ${USE_GIT} = "n" ]]; then
+    rm -rf "${INSTALL_DIR}"
+fi
