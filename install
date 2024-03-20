@@ -90,12 +90,20 @@ function clone_git() {
         error "Please provide a valid installation directory for use with GIT!"
     fi
 
-    log "SYSTEM" "Cloning repository..."
+    if [ -d "${INSTALL_DIR}" && -d "${INSTALL_DIR}/.git"]; then
+        cd "${INSTALL_DIR}"
+        git pull --quiet
+        cd -
+    else
+        log "SYSTEM" "Cloning repository..."
 
-    mkdir -p "${INSTALL_DIR}"
-    git clone --quiet "${GIT_REPO}" "${INSTALL_DIR}"
+        [ -d "${INSTALL_DIR}" ] && rm -rf "${INSTALL_DIR}"
 
-    log "SYSTEM" "Done cloning."
+        mkdir -p "${INSTALL_DIR}"
+        git clone --quiet "${GIT_REPO}" "${INSTALL_DIR}"
+
+        log "SYSTEM" "Done cloning."
+    fi
 }
 
 function download() {
