@@ -33,6 +33,7 @@ function install_zsh() {
 
     create_directory ".zsh"
     install_file ".zsh/wsl2fix.zsh"
+    install_file ".zsh/autorun.zsh"
     install_file ".aliases"
     install_file ".zshenv"
     install_file ".zshrc"
