@@ -1,0 +1,4 @@
+# Source:Target
+zsh             ~/.zsh
+zshenv          ~/.zshenv
+zshrc           ~/.zshrc

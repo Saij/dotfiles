@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+VERSION=0.1.0
+
+LOGGER_FMT=${LOGGER_FMT:="%Y-%m-%d"}
+LOGGER_LVL=${LOGGER_LVL:="info"}
+
+script_dir="$(realpath "$(dirname "$0")")"
+package_dir="${script_dir}/packages"
+
+action="$1"
+
+function show_version() {
+    echo "dotfiles Version $VERSION"
+    [[ "$1" != "n" ]] && echo "Running in directory $script_dir"
+    echo ""
+}
+
+function usage() {
+    case "$1" in
+        commands)
+            show_version "n"
+            usage "version"
+            usage "install"
+            usage "update"
+            usage "uninstall"
+            usage "list"
+            ;;
+        version)
+            echo "Usage: $0 version"
+            echo "  Show version information"
+            echo ""
+            ;;
+        list)
+            echo "Usage: $0 list"
+            echo "  List available packages"
+            echo ""
+            ;;
+        update)
+            echo "Usage: $0 update"
+            echo "  Updates all installed packages"
+            echo ""
+            ;;
+        install)
+            echo "Usage: $0 install PACKAGE_1 PACKAGE_2 ... PACKAGE_N"
+            echo "  Install selected packages"
+            echo ""
+            ;;
+        uninstall)
+            echo "Usage: $0 uninstall PACKAGE"
+            echo "  Uninstall package"
+            echo ""
+            ;;
+    esac
+}
+
+if [[
+    "${action}" != "version" &&
+    "${action}" != "list" &&
+    "${action}" != "install" &&
+    "${action}" != "update" && 
+    "${action}" != "uninstall"
+]]; then
+    usage commands
+    exit 1
+fi
+
+function log() {
+    local action=$1 && shift
+
+    case "$action" in
+        debug)  [[ "$LOGGER_LVL" =~ debug ]]           && echo "$( date "+${LOGGER_FMT}" ) - DEBUG - $*" 1>&2 ;;
+        info)   [[ "$LOGGER_LVL" =~ debug|info ]]      && echo "$( date "+${LOGGER_FMT}" ) - INFO - $*" 1>&2  ;;
+        warn)   [[ "$LOGGER_LVL" =~ debug|info|warn ]] && echo "$( date "+${LOGGER_FMT}" ) - WARN - $*" 1>&2  ;;
+        error)  [[ ! "$LOGGER_LVL" =~ none ]]          && echo "$( date "+${LOGGER_FMT}" ) - ERROR - $*" 1>&2 ;;
+    esac
+
+    true
+}
+
+function log_debug() {
+    log "debug" "$*"
+}
+
+function log_info() {
+    log "info" "$*"
+}
+
+function log_warn() {
+    log "warn" "$*"
+}
+
+function log_error() {
+    log "error" "$*"
+}
+
+function get_status() {
+    package=$1
+    if ! get_packages | grep -q "${package}"; then
+        log_error "Package ${package} does not exist!"
+        exit 1
+    fi
+
+    line_num=0
+    has_missing="n"
+    has_files="n"
+
+    while read -r link_line || [ -n "$link_line" ]; do
+        line_num=$(( line_num + 1 ))
+
+        # Ignore empty lines
+        [[ -z "${link_line}" ]] && continue
+
+        # Ignore full line comments
+        [[ "${link_line:0:1}" == "#" ]] && continue
+        
+        source=$(parse_link_line "${link_line}" 1)
+        dest=$(parse_link_line "${link_line}" 2)
+        dest="${dest//\~/$HOME}"
+
+        if [[ -z "${dest}" ]]; then
+            log_error "Error in file ${package_dir}/${package}/links on line ${line_num}: Missing destination!"
+            exit 1
+        fi
+
+        source="${package_dir}/${package}/${source}"
+
+        # Destination is not existing
+        [[ ! -e "${dest}" ]] && has_missing="y"
+        
+        # Destination is existing
+        if [[ -e "${dest}" ]]; then
+            # Is destination linked to source file?
+            if [[ "$(readlink "${dest}")" == "${source}" ]]; then
+                has_files="y"
+            else
+                has_missing="y"
+            fi
+        fi
+    done < "${package_dir}/${package}/links"
+
+    # Some files installed, some missing
+    [[ "${has_files}" == "y" && "${has_missing}" == "y" ]] && echo "!"
+
+    # Some files installed, none missing
+    [[ "${has_files}" == "y" && "${has_missing}" == "n" ]] && echo "*"
+
+    # No files installed
+    [[ "${has_files}" == "n" ]] && echo " "
+}
+
+function get_packages() {
+    while IFS= read -r package; do
+        [[ ! -f "${package}/links" ]] && continue
+        package=$(echo -n "${package}" | sed -e "s/${package_dir//\//\\/}\///")
+        echo "${package}"
+    done < <(find "${package_dir}" -mindepth 1 -maxdepth 1 -type d)
+}
+
+function parse_link_line() {
+    line="$1"
+    requested_part=$2
+
+    in_quotes="n"
+    cur_part=1
+    val=""
+    for part in ${line}; do
+        if [[ "${part:0:1}" == '"' ]]; then
+            in_quotes="y"
+        fi
+
+        [[ -n "${val}" ]] && val+=" "
+        val+="${part//\"/}"
+
+        if [[ "${part:0-1:1}" == '"' ]]; then
+            in_quotes="n"
+        fi
+
+        if [[ "${in_quotes}" == "n" ]]; then
+            if [[ $cur_part -eq $requested_part ]]; then
+                echo "${val}"
+                return
+            fi
+            cur_part=$(( cur_part + 1 ))
+            val=""
+        fi
+    done
+}
+
+function list_packages() {
+    echo "Available packages:"
+    while read -r package; do
+        echo "  $(get_status "${package}") ${package}"
+    done < <(get_packages)
+    echo ""
+    echo "-- * Package installed    --"
+    echo "-- ! Package needs update --"
+}
+
+function update_packages() {
+    log_info "Updating installed packages..."
+    while read -r package; do
+        status=$(get_status "${package}")
+        [[ "${status}" == "!" ]] && install_package "${package}" "Updating"
+    done < <(get_packages)
+    log_info "All installed packages updated"
+}
+
+function install_package() {
+    package=$1
+    type=${2:-Installing}
+    if ! get_packages | grep -q "${package}"; then
+        log_error "Package ${package} does not exist!"
+        exit 1
+    fi
+
+    log_info "${type} package ${package}"
+
+    line_num=0
+    while read -r link_line || [ -n "$link_line" ]; do
+        line_num=$(( line_num + 1 ))
+
+        # Ignore empty lines
+        [[ -z "${link_line}" ]] && continue
+
+        # Ignore full line comments
+        [[ "${link_line:0:1}" == "#" ]] && continue
+        
+        source=$(parse_link_line "${link_line}" 1)
+        dest=$(parse_link_line "${link_line}" 2)
+        dest="${dest//\~/$HOME}"
+
+        if [[ -z "${dest}" ]]; then
+            log_error "Error in file ${package_dir}/${package}/links on line ${line_num}: Missing destination!"
+            exit 1
+        fi
+
+        source="${package_dir}/${package}/${source}"
+        if [[ ! -e "${source}" ]]; then
+            log_error "Error in ${package_dir}/${package}/links on line ${line_num}: Source file \"${source}\" not found!"
+            exit 1
+        fi
+        parent_dir=$(dirname "${source}")
+        [[ ! -d "${parent_dir}" ]] && mkdir -p "${parent_dir}"
+        [[ -e "${dest}" ]] && rm -rf "${dest}"
+
+        ln -s "${source}" "${dest//\~/$HOME}"
+    done < "${package_dir}/${package}/links"
+}
+
+function uninstall_package() {
+    package=$1
+
+    if ! get_packages | grep -q "${package}"; then
+        log_error "Package ${package} does not exist!"
+        exit 1
+    fi
+
+    log_info "Uninstalling package ${package}"
+
+    line_num=0
+    while read -r link_line || [ -n "$link_line" ]; do
+        line_num=$(( line_num + 1 ))
+
+        # Ignore empty lines
+        [[ -z "${link_line}" ]] && continue
+
+        # Ignore full line comments
+        [[ "${link_line:0:1}" == "#" ]] && continue
+        
+        source=$(parse_link_line "${link_line}" 1)
+        dest=$(parse_link_line "${link_line}" 2)
+        dest="${dest//\~/$HOME}"
+
+        if [[ -z "${dest}" ]]; then
+            log_error "Error in file ${package_dir}/${package}/links on line ${line_num}: Missing destination!"
+            exit 1
+        fi
+
+        source="${package_dir}/${package}/${source}"
+        [[ -e "${dest}" && "${source}" == $(readlink "${dest}") ]] && rm -rf "${dest}"
+    done < "${package_dir}/${package}/links"
+}
+
+show_version
+
+case "$action" in
+    install)
+        if [ $# -lt 2 ]; then
+            usage install
+            exit 1
+        fi
+
+        while true; do
+            shift
+
+            if [ -z "$1" ];then
+                break
+            fi
+
+            install_package "$1"
+        done
+
+        log_info "Completed installation of all profiles successfully."
+        ;;
+    uninstall)
+        if [ $# -lt 2 ]; then
+            usage uninstall
+            exit 1
+        fi
+        uninstall_package "$2"
+        ;;
+    update)
+        update_packages
+        ;;
+    list)
+        list_packages
+        ;;
+    version)
+        ;;
+esac

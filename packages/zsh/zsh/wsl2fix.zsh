@@ -1,0 +1,1 @@
+/home/chris/.dotfiles/.zsh/wsl2fix.zsh
