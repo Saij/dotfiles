@@ -4,8 +4,69 @@ VERSION=0.1.0
 LOGGER_FMT=${LOGGER_FMT:="%Y-%m-%d"}
 LOGGER_LVL=${LOGGER_LVL:="info"}
 
+REPO="git@github.com:Saij/dotfiles.git"
+ARCHIVE="https://github.com/Saij/dotfiles/archive/refs/heads/main.tar.gz"
+INSTALL_DIR="${HOME}/.dotfiles"
+
 script_dir="$(realpath "$(dirname "$0")")"
 package_dir="${script_dir}/packages"
+
+function log() {
+    local action=$1 && shift
+
+    case "$action" in
+        debug)  [[ "$LOGGER_LVL" =~ debug ]]           && echo "$( date "+${LOGGER_FMT}" ) - DEBUG - $*" 1>&2 ;;
+        info)   [[ "$LOGGER_LVL" =~ debug|info ]]      && echo "$( date "+${LOGGER_FMT}" ) - INFO - $*" 1>&2  ;;
+        warn)   [[ "$LOGGER_LVL" =~ debug|info|warn ]] && echo "$( date "+${LOGGER_FMT}" ) - WARN - $*" 1>&2  ;;
+        error)  [[ ! "$LOGGER_LVL" =~ none ]]          && echo "$( date "+${LOGGER_FMT}" ) - ERROR - $*" 1>&2 ;;
+    esac
+
+    true
+}
+
+function log_debug() {
+    log "debug" "$*"
+}
+
+function log_info() {
+    log "info" "$*"
+}
+
+function log_warn() {
+    log "warn" "$*"
+}
+
+function log_error() {
+    log "error" "$*"
+}
+
+function download_system() {
+    temp_dir=$(mktemp -d)
+    
+    log_info "Downloading archive ${ARCHIVE}"
+    curl -sSL "${ARCHIVE}" -o "${temp_dir}/dotfiles.tar.gz"
+
+    [[ ! -d "${INSTALL_DIR}" ]] && mkdir -p "${INSTALL_DIR}"
+
+    log_info "Extracting"
+    tar -xz --strip-components=1 -f "${temp_dir}/dotfiles.tar.gz" -C "${INSTALL_DIR}"
+}
+
+if [[ ! -d "${script_dir}/packages" ]]; then
+    log_info "Installing dotfiles system..."
+    download_system
+    log_info "Done downloading dotfiles system"
+
+    result=0
+    if [ $# -gt 0 ]; then
+        echo ""
+        # shellcheck disable=SC2068
+        "${INSTALL_DIR}/dotfiles" $@
+        result=$?
+    fi
+
+    exit ${result}
+fi
 
 action="$1"
 
@@ -63,35 +124,6 @@ if [[
     usage commands
     exit 1
 fi
-
-function log() {
-    local action=$1 && shift
-
-    case "$action" in
-        debug)  [[ "$LOGGER_LVL" =~ debug ]]           && echo "$( date "+${LOGGER_FMT}" ) - DEBUG - $*" 1>&2 ;;
-        info)   [[ "$LOGGER_LVL" =~ debug|info ]]      && echo "$( date "+${LOGGER_FMT}" ) - INFO - $*" 1>&2  ;;
-        warn)   [[ "$LOGGER_LVL" =~ debug|info|warn ]] && echo "$( date "+${LOGGER_FMT}" ) - WARN - $*" 1>&2  ;;
-        error)  [[ ! "$LOGGER_LVL" =~ none ]]          && echo "$( date "+${LOGGER_FMT}" ) - ERROR - $*" 1>&2 ;;
-    esac
-
-    true
-}
-
-function log_debug() {
-    log "debug" "$*"
-}
-
-function log_info() {
-    log "info" "$*"
-}
-
-function log_warn() {
-    log "warn" "$*"
-}
-
-function log_error() {
-    log "error" "$*"
-}
 
 function get_status() {
     package=$1
@@ -281,6 +313,22 @@ function uninstall_package() {
     done < "${package_dir}/${package}/links"
 }
 
+function update_system() {
+    if [[ -d "${script_dir}/.git" && -n $(which git) ]]; then
+        (
+            log_info "Updating system through GIT"
+            cd "${script_dir}" || return
+            git pull --quiet
+            log_info "Finished update"
+        )
+        return
+    fi
+
+    log_info "Updating system through download"
+    download_system
+    log_info "Finished update"
+}
+
 show_version
 
 case "$action" in
@@ -310,6 +358,7 @@ case "$action" in
         uninstall_package "$2"
         ;;
     update)
+        update_system
         update_packages
         ;;
     list)

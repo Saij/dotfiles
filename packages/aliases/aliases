@@ -1,8 +1,10 @@
-[[ ! -z "$(which kubectl)" ]] && alias k="kubectl"
-[[ ! -z "$(which help)" ]] && alias h="helm"
+[[ -n "$(which kubectl)" ]] && alias k="kubectl"
+[[ -n "$(which help)" ]] && alias h="helm"
 
 [[ -z $(which code) && ! -z $(which open) ]] && alias code="open -a 'Visual Studio Code'"
 
-[[ ! -z "$(which eza)" ]] && alias ls="eza --icons --group-directories-first"
-[[ ! -z "$(which eza)" ]] && alias ll="eza --icons --group-directories-first -l"
+[[ -n "$(which eza)" ]] && alias ls="eza --icons --group-directories-first"
+[[ -n "$(which eza)" ]] && alias ll="eza --icons --group-directories-first -l"
 alias grep='grep --color'
+
+alias dotfiles='~/.dotfiles/dotfiles'
