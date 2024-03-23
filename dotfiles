@@ -271,7 +271,7 @@ function install_package() {
             log_error "Error in ${package_dir}/${package}/links on line ${line_num}: Source file \"${source}\" not found!"
             exit 1
         fi
-        parent_dir=$(dirname "${source}")
+        parent_dir=$(dirname "${dest}")
         [[ ! -d "${parent_dir}" ]] && mkdir -p "${parent_dir}"
         [[ -e "${dest}" ]] && rm -rf "${dest}"
 
