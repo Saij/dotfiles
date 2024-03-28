@@ -1,1 +1,5 @@
-/home/chris/.dotfiles/.zsh/autorun.zsh
+if [[ -d ~/.autorun ]]; then
+    for file in ~/.autorun/*; do
+        source $file
+    done
+fi

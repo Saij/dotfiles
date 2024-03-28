@@ -4,7 +4,7 @@ VERSION=0.1.0
 LOGGER_FMT=${LOGGER_FMT:="%Y-%m-%d"}
 LOGGER_LVL=${LOGGER_LVL:="info"}
 
-REPO="git@github.com:Saij/dotfiles.git"
+#REPO="git@github.com:Saij/dotfiles.git"
 ARCHIVE="https://github.com/Saij/dotfiles/archive/refs/heads/main.tar.gz"
 INSTALL_DIR="${HOME}/.dotfiles"
 
