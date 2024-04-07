@@ -1,6 +1,6 @@
 # shellcheck shell=sh
 has_program() {
-    if which -s "$1" >/dev/null; then echo "Y"; else echo ""; fi
+    if which "$1" >/dev/null; then echo "Y"; else echo ""; fi
 }
 
 [ -n "$(has_program "kubectl")" ] && alias k="kubectl"
