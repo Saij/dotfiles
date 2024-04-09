@@ -30,3 +30,8 @@ fi
 if [[ ! -z $(which starship) ]]; then
     eval "$(starship init bash)"
 fi
+
+# Load k3s autocompletion
+if [[ ! -z $(which k3s) ]]; then
+    . <(k3s completion bash)
+fi
