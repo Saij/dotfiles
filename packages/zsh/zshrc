@@ -7,3 +7,7 @@
 if [[ ! -z $(which starship) ]]; then
     eval "$(starship init zsh)"
 fi
+
+# Load SSH Agent
+eval "$(ssh-agent)"
+ssh-add
