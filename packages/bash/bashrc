@@ -35,3 +35,8 @@ fi
 if [[ ! -z $(which k3s) ]]; then
     . <(k3s completion bash)
 fi
+
+# Load kubectl autocompletion
+if [[ ! -z $(which kubectl) ]]; then
+    . <(kubectl completion bash)
+fi

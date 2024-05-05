@@ -11,3 +11,8 @@ fi
 # Load SSH Agent
 eval "$(ssh-agent)"
 ssh-add
+
+# Load kubectl autocompletion
+if [[ ! -z $(which kubectl) ]]; then
+    . <(kubectl completion zsh)
+fi
