@@ -14,5 +14,7 @@ ssh-add
 
 # Load kubectl autocompletion
 if [[ ! -z $(which kubectl) ]]; then
-    . <(kubectl completion zsh)
+    autoload -Uz compinit
+    compinit
+    eval "$(kubectl completion zsh)"
 fi
