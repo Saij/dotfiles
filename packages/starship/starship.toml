@@ -2,7 +2,7 @@
 
 add_newline = false
 command_timeout = 1000
-format = """$os$username$hostname$kubernetes$directory$git_branch$git_status"""
+format = """$os$username$hostname$python$kubernetes$directory$git_branch$git_status"""
 
 # Drop ugly default prompt characters
 [character]
@@ -87,6 +87,11 @@ deleted = '[󰍶 deleted=${count}](red) '
 format = 'via [󱃾 $context\($namespace\)](bold purple) '
 disabled = false
 
+# Python
+[python]
+disabled = false
+version_format = 'v${major}.${minor}'
+
 # ---
 
 [vagrant]
@@ -96,9 +101,6 @@ disabled = true
 disabled = true
 
 [helm]
-disabled = true
-
-[python]
 disabled = true
 
 [nodejs]
