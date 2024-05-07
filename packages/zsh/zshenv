@@ -7,3 +7,7 @@ export KUBE_EDITOR=nano
 if [[ -f ~/Projects/cluster/.kube/config ]]; then
     export KUBECONFIG=${KUBECONFIG:-~/.kube/config}:~/Projects/cluster/.kube/config
 fi
+
+if [[ -f ~/Documents/Projects/cluster/.kube/config ]]; then
+    export KUBECONFIG=${KUBECONFIG:-~/.kube/config}:~/Documents/Projects/cluster/.kube/config
+fi
