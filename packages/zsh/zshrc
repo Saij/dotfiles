@@ -18,3 +18,7 @@ if [[ ! -z $(which kubectl) ]]; then
     compinit
     eval "$(kubectl completion zsh)"
 fi
+
+if [[ -d "${KREW_ROOT:-$HOME/.krew}/bin" ]]; then
+    export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+fi
